@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  ms-orders:
+    build: .
+    container_name: ms-orders
+    ports:
+      - "8082:8082"
+    environment:
+      - SERVER_PORT=8082
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=orders_user
+      - DB_PASSWORD=orders_password
+      - MS_PRODUCTS_BASE_URL=${MS_PRODUCTS_BASE_URL:http://localhost:8081}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:http://localhost:5173,https://raulfuenzalida.github.io}
+    depends_on:
+      - mysql
+    networks:
+      - printworks-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: orders-db
+    ports:
+      - "3307:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=orders_db
+      - MYSQL_USER=orders_user
+      - MYSQL_PASSWORD=orders_password
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./src/main/resources/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - printworks-network
+
+volumes:
+  mysql-data:
+
+networks:
+  printworks-network:
+    driver: bridge

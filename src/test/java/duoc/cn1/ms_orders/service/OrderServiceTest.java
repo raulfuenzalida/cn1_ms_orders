@@ -31,202 +31,277 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
 
-	@Mock
-	private OrderRepository orderRepository;
+    @Mock
+    private OrderRepository orderRepository;
 
-	@Mock
-	private OrderItemRepository orderItemRepository;
+    @Mock
+    private OrderItemRepository orderItemRepository;
 
-	@Mock
-	private ProductServiceClient productServiceClient;
+    @Mock
+    private ProductServiceClient productServiceClient;
 
-	@InjectMocks
-	private OrderService orderService;
+    @InjectMocks
+    private OrderService orderService;
 
-	private OrderCreateRequest validRequest;
-	private ProductDto validProduct;
+    private OrderCreateRequest validRequest;
 
-	@BeforeEach
-	void setUp() {
-		validProduct = new ProductDto();
-		validProduct.setId(1L);
-		validProduct.setName("Test Product");
-		validProduct.setFinalPrice(new BigDecimal("100.00"));
-		validProduct.setStatus("ACTIVE");
-		validProduct.setPriceStatus("CURRENT");
+    @BeforeEach
+    void setUp() {
+        OrderItemRequest itemRequest = new OrderItemRequest();
+        itemRequest.setIdProduct(1L);
+        itemRequest.setQuantity(2);
 
-		OrderItemRequest itemRequest = new OrderItemRequest();
-		itemRequest.setIdProduct(1L);
-		itemRequest.setQuantity(2);
+        validRequest = new OrderCreateRequest();
+        validRequest.setCustomerName("Test Customer");
+        validRequest.setCustomerEmail("test@example.com");
+        validRequest.setItems(Collections.singletonList(itemRequest));
+    }
 
-		validRequest = new OrderCreateRequest();
-		validRequest.setCustomerName("Test Customer");
-		validRequest.setCustomerEmail("test@example.com");
-		validRequest.setItems(Collections.singletonList(itemRequest));
-	}
+    @Test
+    void createOrder_ValidRequest_Success() {
+        ProductDto product = new ProductDto();
+        product.setId(1L);
+        product.setName("Producto Test");
+        product.setFinalPrice(new BigDecimal("2500"));
 
-	@Test
-	void createOrder_ValidRequest_Success() {
-		when(productServiceClient.getProductById(1L)).thenReturn(validProduct);
-		when(productServiceClient.isProductAvailable(validProduct)).thenReturn(true);
-		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
-			Order order = invocation.getArgument(0);
-			order.setId(1L);
-			return order;
-		});
-		when(orderItemRepository.saveAll(anyList())).thenReturn(Collections.emptyList());
+        when(productServiceClient.getProductById(1L))
+            .thenReturn(product);
 
-		var response = orderService.createOrder(validRequest);
+        when(orderRepository.save(any(Order.class)))
+            .thenAnswer(invocation -> {
+                Order order = invocation.getArgument(0);
+                order.setId(1L);
+                return order;
+            });
 
-		assertNotNull(response);
-		assertEquals("Test Customer", response.getCustomerName());
-		assertEquals("test@example.com", response.getCustomerEmail());
-		assertEquals(OrderStatus.CREATED, response.getStatus());
-		verify(orderRepository, times(1)).save(any(Order.class));
-	}
+        when(orderItemRepository.saveAll(anyList()))
+            .thenAnswer(invocation -> {
+                List<OrderItem> items = invocation.getArgument(0);
 
-	@Test
-	void createOrder_ProductNotAvailable_ThrowsException() {
-		validProduct.setStatus("INACTIVE");
-		when(productServiceClient.getProductById(1L)).thenReturn(validProduct);
-		when(productServiceClient.isProductAvailable(validProduct)).thenReturn(false);
+                for (int i = 0; i < items.size(); i++) {
+                    items.get(i).setId((long) (i + 1));
+                }
 
-		assertThrows(ProductNotAvailableException.class, () -> orderService.createOrder(validRequest));
-	}
+                return items;
+            });
 
-	@Test
-	void createOrder_EmptyItems_ThrowsException() {
-		validRequest.setItems(Collections.emptyList());
+        var response = orderService.createOrder(validRequest);
 
-		assertThrows(InvalidCustomerDataException.class, () -> orderService.createOrder(validRequest));
-	}
+        assertNotNull(response);
+        assertEquals(1L, response.getId());
+        assertEquals("Test Customer", response.getCustomerName());
+        assertEquals("test@example.com", response.getCustomerEmail());
+        assertEquals(OrderStatus.CREATED, response.getStatus());
+        assertEquals(new BigDecimal("5000"), response.getTotal());
 
-	@Test
-	void createOrder_TooManyItems_ThrowsException() {
-		List<OrderItemRequest> items = Collections.nCopies(31, new OrderItemRequest());
-		validRequest.setItems(items);
+        assertNotNull(response.getItems());
+        assertEquals(1, response.getItems().size());
 
-		assertThrows(TooManyDistinctProductsException.class, () -> orderService.createOrder(validRequest));
-	}
+        var item = response.getItems().get(0);
 
-	@Test
-	void createOrder_DuplicateProducts_ThrowsException() {
-		OrderItemRequest item1 = new OrderItemRequest();
-		item1.setIdProduct(1L);
-		item1.setQuantity(2);
+        assertEquals(1L, item.getIdProduct());
+        assertEquals("Producto Test", item.getProductName());
+        assertEquals(new BigDecimal("2500"), item.getUnitPrice());
+        assertEquals(2, item.getQuantity());
+        assertEquals(new BigDecimal("5000"), item.getSubtotal());
 
-		OrderItemRequest item2 = new OrderItemRequest();
-		item2.setIdProduct(1L);
-		item2.setQuantity(3);
+        verify(productServiceClient).getProductById(1L);
+        verify(orderRepository).save(any(Order.class));
+        verify(orderItemRepository).saveAll(anyList());
+    }
 
-		validRequest.setItems(Arrays.asList(item1, item2));
+    @Test
+    void createOrder_EmptyItems_ThrowsException() {
+        validRequest.setItems(Collections.emptyList());
 
-		assertThrows(DuplicateProductException.class, () -> orderService.createOrder(validRequest));
-	}
+        assertThrows(
+            InvalidCustomerDataException.class,
+            () -> orderService.createOrder(validRequest)
+        );
 
-	@Test
-	void createOrder_InvalidQuantity_ThrowsException() {
-		OrderItemRequest itemRequest = new OrderItemRequest();
-		itemRequest.setIdProduct(1L);
-		itemRequest.setQuantity(0);
+        verifyNoInteractions(productServiceClient);
+        verify(orderRepository, never()).save(any(Order.class));
+    }
 
-		validRequest.setItems(Collections.singletonList(itemRequest));
+    @Test
+    void createOrder_TooManyItems_ThrowsException() {
+        List<OrderItemRequest> items =
+            Collections.nCopies(31, new OrderItemRequest());
 
-		when(productServiceClient.getProductById(1L)).thenReturn(validProduct);
-		when(productServiceClient.isProductAvailable(validProduct)).thenReturn(true);
+        validRequest.setItems(items);
 
-		assertThrows(InvalidQuantityException.class, () -> orderService.createOrder(validRequest));
-	}
+        assertThrows(
+            TooManyDistinctProductsException.class,
+            () -> orderService.createOrder(validRequest)
+        );
 
-	@Test
-	void confirmOrder_ValidTransition_Success() {
-		Order order = new Order();
-		order.setId(1L);
-		order.setStatus(OrderStatus.CREATED);
+        verifyNoInteractions(productServiceClient);
+        verify(orderRepository, never()).save(any(Order.class));
+    }
 
-		when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-		when(orderRepository.save(any(Order.class))).thenReturn(order);
+    @Test
+    void createOrder_DuplicateProducts_ThrowsException() {
+        OrderItemRequest item1 = new OrderItemRequest();
+        item1.setIdProduct(1L);
+        item1.setQuantity(2);
 
-		var response = orderService.confirmOrder(1L);
+        OrderItemRequest item2 = new OrderItemRequest();
+        item2.setIdProduct(1L);
+        item2.setQuantity(3);
 
-		assertEquals(OrderStatus.CONFIRMED, response.getStatus());
-		assertNotNull(response.getConfirmedAt());
-	}
+        validRequest.setItems(Arrays.asList(item1, item2));
 
-	@Test
-	void confirmOrder_InvalidTransition_ThrowsException() {
-		Order order = new Order();
-		order.setId(1L);
-		order.setStatus(OrderStatus.COMPLETED);
+        assertThrows(
+            DuplicateProductException.class,
+            () -> orderService.createOrder(validRequest)
+        );
 
-		when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        verifyNoInteractions(productServiceClient);
+        verify(orderRepository, never()).save(any(Order.class));
+    }
 
-		assertThrows(InvalidOrderTransitionException.class, () -> orderService.confirmOrder(1L));
-	}
+    @Test
+    void createOrder_InvalidQuantity_ThrowsException() {
+        validRequest.getItems().get(0).setQuantity(0);
 
-	@Test
-	void completeOrder_ValidTransition_Success() {
-		Order order = new Order();
-		order.setId(1L);
-		order.setStatus(OrderStatus.CONFIRMED);
+        ProductDto product = new ProductDto();
+        product.setId(1L);
+        product.setName("Producto Test");
+        product.setFinalPrice(new BigDecimal("2500"));
 
-		when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-		when(orderRepository.save(any(Order.class))).thenReturn(order);
+        when(productServiceClient.getProductById(1L))
+            .thenReturn(product);
 
-		var response = orderService.completeOrder(1L);
+        assertThrows(
+            InvalidQuantityException.class,
+            () -> orderService.createOrder(validRequest)
+        );
 
-		assertEquals(OrderStatus.COMPLETED, response.getStatus());
-		assertNotNull(response.getCompletedAt());
-	}
+        verify(orderRepository, never()).save(any(Order.class));
+        verify(orderItemRepository, never()).saveAll(anyList());
+    }
 
-	@Test
-	void cancelOrder_ValidTransition_Success() {
-		Order order = new Order();
-		order.setId(1L);
-		order.setStatus(OrderStatus.CREATED);
+    @Test
+    void confirmOrder_ValidTransition_Success() {
+        Order order = createOrderWithStatus(OrderStatus.CREATED);
 
-		when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-		when(orderRepository.save(any(Order.class))).thenReturn(order);
+        when(orderRepository.findById(1L))
+            .thenReturn(Optional.of(order));
 
-		var response = orderService.cancelOrder(1L);
+        when(orderRepository.save(any(Order.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
 
-		assertEquals(OrderStatus.CANCELLED, response.getStatus());
-		assertNotNull(response.getCancelledAt());
-	}
+        var response = orderService.confirmOrder(1L);
 
-	@Test
-	void cancelOrder_CompletedOrder_ThrowsException() {
-		Order order = new Order();
-		order.setId(1L);
-		order.setStatus(OrderStatus.COMPLETED);
+        assertEquals(OrderStatus.CONFIRMED, response.getStatus());
+        assertNotNull(response.getConfirmedAt());
 
-		when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        verify(orderRepository).save(order);
+    }
 
-		assertThrows(InvalidOrderTransitionException.class, () -> orderService.cancelOrder(1L));
-	}
+    @Test
+    void confirmOrder_InvalidTransition_ThrowsException() {
+        Order order = createOrderWithStatus(OrderStatus.COMPLETED);
 
-	@Test
-	void getOrderById_ExistingOrder_Success() {
-		Order order = new Order();
-		order.setId(1L);
-		order.setCustomerName("Test Customer");
-		order.setCustomerEmail("test@example.com");
-		order.setStatus(OrderStatus.CREATED);
-		order.setTotal(new BigDecimal("200.00"));
+        when(orderRepository.findById(1L))
+            .thenReturn(Optional.of(order));
 
-		when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        assertThrows(
+            InvalidOrderTransitionException.class,
+            () -> orderService.confirmOrder(1L)
+        );
 
-		var response = orderService.getOrderById(1L);
+        verify(orderRepository, never()).save(any(Order.class));
+    }
 
-		assertNotNull(response);
-		assertEquals(1L, response.getId());
-		assertEquals("Test Customer", response.getCustomerName());
-	}
+    @Test
+    void completeOrder_ValidTransition_Success() {
+        Order order = createOrderWithStatus(OrderStatus.CONFIRMED);
 
-	@Test
-	void getOrderById_NonExistingOrder_ThrowsException() {
-		when(orderRepository.findById(1L)).thenReturn(Optional.empty());
+        when(orderRepository.findById(1L))
+            .thenReturn(Optional.of(order));
 
-		assertThrows(OrderNotFoundException.class, () -> orderService.getOrderById(1L));
-	}
+        when(orderRepository.save(any(Order.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = orderService.completeOrder(1L);
+
+        assertEquals(OrderStatus.COMPLETED, response.getStatus());
+        assertNotNull(response.getCompletedAt());
+
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void cancelOrder_ValidTransition_Success() {
+        Order order = createOrderWithStatus(OrderStatus.CREATED);
+
+        when(orderRepository.findById(1L))
+            .thenReturn(Optional.of(order));
+
+        when(orderRepository.save(any(Order.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = orderService.cancelOrder(1L);
+
+        assertEquals(OrderStatus.CANCELLED, response.getStatus());
+        assertNotNull(response.getCancelledAt());
+
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void cancelOrder_CompletedOrder_ThrowsException() {
+        Order order = createOrderWithStatus(OrderStatus.COMPLETED);
+
+        when(orderRepository.findById(1L))
+            .thenReturn(Optional.of(order));
+
+        assertThrows(
+            InvalidOrderTransitionException.class,
+            () -> orderService.cancelOrder(1L)
+        );
+
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void getOrderById_ExistingOrder_Success() {
+        Order order = createOrderWithStatus(OrderStatus.CREATED);
+
+        when(orderRepository.findById(1L))
+            .thenReturn(Optional.of(order));
+
+        var response = orderService.getOrderById(1L);
+
+        assertNotNull(response);
+        assertEquals(1L, response.getId());
+        assertEquals("Test Customer", response.getCustomerName());
+        assertEquals("test@example.com", response.getCustomerEmail());
+        assertEquals(OrderStatus.CREATED, response.getStatus());
+    }
+
+    @Test
+    void getOrderById_NonExistingOrder_ThrowsException() {
+        when(orderRepository.findById(1L))
+            .thenReturn(Optional.empty());
+
+        assertThrows(
+            OrderNotFoundException.class,
+            () -> orderService.getOrderById(1L)
+        );
+    }
+
+    private Order createOrderWithStatus(OrderStatus status) {
+        Order order = new Order();
+
+        order.setId(1L);
+        order.setCustomerName("Test Customer");
+        order.setCustomerEmail("test@example.com");
+        order.setStatus(status);
+        order.setTotal(new BigDecimal("200.00"));
+        order.setItems(Collections.emptyList());
+
+        return order;
+    }
 }
