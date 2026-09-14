@@ -25,10 +25,10 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${OAUTH2_ISSUER_URI:https://login.microsoftonline.com/14c46308-ab91-4693-b0c0-daddd7a8aab5/v2.0}
+          issuer-uri: https://login.microsoftonline.com/14c46308-ab91-4693-b0c0-daddd7a8aab5/v2.0
           audiences:
-            - ${OAUTH2_AUDIENCE:api://80bf85e9-a444-4754-b780-c65dfff74876}
-            - ${OAUTH2_AUDIENCE_ID:80bf85e9-a444-4754-b780-c65dfff74876}
+            - api://80bf85e9-a444-4754-b780-c65dfff74876
+            - 80bf85e9-a444-4754-b780-c65dfff74876
 
 ms:
   products:

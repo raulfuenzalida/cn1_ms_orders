@@ -86,8 +86,6 @@ El servicio utiliza las siguientes variables de entorno (ver `.env.example`):
 - `DB_PASSWORD` - Contraseña de base de datos
 - `MS_PRODUCTS_BASE_URL` - URL base del servicio ms_products
 - `CORS_ALLOWED_ORIGINS` - Orígenes permitidos para CORS
-- `OAUTH2_ISSUER_URI` - URI del emisor OAuth2 (Microsoft Entra ID)
-- `OAUTH2_AUDIENCE` - Audiencia OAuth2 (ID de cliente de la aplicación)
 
 ### Base de Datos
 

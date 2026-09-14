@@ -132,13 +132,13 @@ public class GlobalExceptionHandler {
 			InvalidProductResponseException ex, WebRequest request) {
 		ErrorResponse error = new ErrorResponse(
 			LocalDateTime.now(),
-			HttpStatus.BAD_REQUEST.value(),
-			HttpStatus.BAD_REQUEST.getReasonPhrase(),
+			HttpStatus.BAD_GATEWAY.value(),
+			HttpStatus.BAD_GATEWAY.getReasonPhrase(),
 			"INVALID_PRODUCT_RESPONSE",
 			ex.getMessage(),
 			request.getDescription(false).replace("uri=", "")
 		);
-		return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+		return new ResponseEntity<>(error, HttpStatus.BAD_GATEWAY);
 	}
 
 	@ExceptionHandler(InvalidCustomerDataException.class)

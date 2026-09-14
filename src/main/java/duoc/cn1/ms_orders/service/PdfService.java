@@ -1,5 +1,6 @@
 package duoc.cn1.ms_orders.service;
 
+import duoc.cn1.ms_orders.exception.OrderNotFoundException;
 import duoc.cn1.ms_orders.model.Order;
 import duoc.cn1.ms_orders.repository.OrderRepository;
 import com.itextpdf.io.font.constants.StandardFonts;
@@ -30,7 +31,7 @@ public class PdfService {
 
 	public byte[] generateOrderReceipt(Long id) {
 		Order order = orderRepository.findById(id)
-			.orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+			.orElseThrow(() -> new OrderNotFoundException(id));
 
 		try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
 			PdfWriter writer = new PdfWriter(outputStream);

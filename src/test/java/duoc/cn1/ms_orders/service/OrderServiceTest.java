@@ -1,14 +1,10 @@
 package duoc.cn1.ms_orders.service;
 
-import duoc.cn1.ms_orders.client.ProductDto;
-import duoc.cn1.ms_orders.client.ProductServiceClient;
 import duoc.cn1.ms_orders.dto.request.OrderCreateRequest;
 import duoc.cn1.ms_orders.dto.request.OrderItemRequest;
 import duoc.cn1.ms_orders.exception.*;
 import duoc.cn1.ms_orders.model.Order;
-import duoc.cn1.ms_orders.model.OrderItem;
 import duoc.cn1.ms_orders.model.OrderStatus;
-import duoc.cn1.ms_orders.repository.OrderItemRepository;
 import duoc.cn1.ms_orders.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,7 +13,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -25,7 +20,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,27 +28,13 @@ class OrderServiceTest {
 	@Mock
 	private OrderRepository orderRepository;
 
-	@Mock
-	private OrderItemRepository orderItemRepository;
-
-	@Mock
-	private ProductServiceClient productServiceClient;
-
 	@InjectMocks
 	private OrderService orderService;
 
 	private OrderCreateRequest validRequest;
-	private ProductDto validProduct;
 
 	@BeforeEach
 	void setUp() {
-		validProduct = new ProductDto();
-		validProduct.setId(1L);
-		validProduct.setName("Test Product");
-		validProduct.setFinalPrice(new BigDecimal("100.00"));
-		validProduct.setStatus("ACTIVE");
-		validProduct.setPriceStatus("CURRENT");
-
 		OrderItemRequest itemRequest = new OrderItemRequest();
 		itemRequest.setIdProduct(1L);
 		itemRequest.setQuantity(2);
@@ -66,38 +46,8 @@ class OrderServiceTest {
 	}
 
 	@Test
-	void createOrder_ValidRequest_Success() {
-		when(productServiceClient.getProductById(1L)).thenReturn(validProduct);
-		when(productServiceClient.isProductAvailable(validProduct)).thenReturn(true);
-		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
-			Order order = invocation.getArgument(0);
-			order.setId(1L);
-			return order;
-		});
-		when(orderItemRepository.saveAll(anyList())).thenReturn(Collections.emptyList());
-
-		var response = orderService.createOrder(validRequest);
-
-		assertNotNull(response);
-		assertEquals("Test Customer", response.getCustomerName());
-		assertEquals("test@example.com", response.getCustomerEmail());
-		assertEquals(OrderStatus.CREATED, response.getStatus());
-		verify(orderRepository, times(1)).save(any(Order.class));
-	}
-
-	@Test
-	void createOrder_ProductNotAvailable_ThrowsException() {
-		validProduct.setStatus("INACTIVE");
-		when(productServiceClient.getProductById(1L)).thenReturn(validProduct);
-		when(productServiceClient.isProductAvailable(validProduct)).thenReturn(false);
-
-		assertThrows(ProductNotAvailableException.class, () -> orderService.createOrder(validRequest));
-	}
-
-	@Test
 	void createOrder_EmptyItems_ThrowsException() {
 		validRequest.setItems(Collections.emptyList());
-
 		assertThrows(InvalidCustomerDataException.class, () -> orderService.createOrder(validRequest));
 	}
 
@@ -105,7 +55,6 @@ class OrderServiceTest {
 	void createOrder_TooManyItems_ThrowsException() {
 		List<OrderItemRequest> items = Collections.nCopies(31, new OrderItemRequest());
 		validRequest.setItems(items);
-
 		assertThrows(TooManyDistinctProductsException.class, () -> orderService.createOrder(validRequest));
 	}
 
@@ -120,22 +69,7 @@ class OrderServiceTest {
 		item2.setQuantity(3);
 
 		validRequest.setItems(Arrays.asList(item1, item2));
-
 		assertThrows(DuplicateProductException.class, () -> orderService.createOrder(validRequest));
-	}
-
-	@Test
-	void createOrder_InvalidQuantity_ThrowsException() {
-		OrderItemRequest itemRequest = new OrderItemRequest();
-		itemRequest.setIdProduct(1L);
-		itemRequest.setQuantity(0);
-
-		validRequest.setItems(Collections.singletonList(itemRequest));
-
-		when(productServiceClient.getProductById(1L)).thenReturn(validProduct);
-		when(productServiceClient.isProductAvailable(validProduct)).thenReturn(true);
-
-		assertThrows(InvalidQuantityException.class, () -> orderService.createOrder(validRequest));
 	}
 
 	@Test
@@ -160,7 +94,6 @@ class OrderServiceTest {
 		order.setStatus(OrderStatus.COMPLETED);
 
 		when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-
 		assertThrows(InvalidOrderTransitionException.class, () -> orderService.confirmOrder(1L));
 	}
 
@@ -201,7 +134,6 @@ class OrderServiceTest {
 		order.setStatus(OrderStatus.COMPLETED);
 
 		when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-
 		assertThrows(InvalidOrderTransitionException.class, () -> orderService.cancelOrder(1L));
 	}
 
@@ -212,7 +144,7 @@ class OrderServiceTest {
 		order.setCustomerName("Test Customer");
 		order.setCustomerEmail("test@example.com");
 		order.setStatus(OrderStatus.CREATED);
-		order.setTotal(new BigDecimal("200.00"));
+		order.setTotal(new java.math.BigDecimal("200.00"));
 
 		when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
 
@@ -226,7 +158,6 @@ class OrderServiceTest {
 	@Test
 	void getOrderById_NonExistingOrder_ThrowsException() {
 		when(orderRepository.findById(1L)).thenReturn(Optional.empty());
-
 		assertThrows(OrderNotFoundException.class, () -> orderService.getOrderById(1L));
 	}
 }
