@@ -1,19 +1,13 @@
 package duoc.cn1.ms_orders.client;
 
 import duoc.cn1.ms_orders.exception.InvalidProductResponseException;
-import duoc.cn1.ms_orders.exception.ProductNotFoundException;
 import duoc.cn1.ms_orders.exception.ProductServiceUnavailableException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-
-import java.io.IOException;
 
 @Slf4j
 @Component
@@ -38,10 +32,17 @@ public class ProductServiceClient {
 				throw new InvalidProductResponseException("Respuesta nula del servicio de productos para ID: " + id);
 			}
 			
+			// Validar campos requeridos
+			if (product.getId() == null || product.getName() == null || product.getFinalPrice() == null
+					|| product.getStatus() == null || product.getPriceStatus() == null) {
+				log.error("Producto {} tiene datos incompletos en ms_products - campos requeridos faltantes", id);
+				throw new InvalidProductResponseException("Respuesta del servicio de productos con datos incompletos para ID: " + id);
+			}
+			
 			log.info("Producto {} encontrado: {} - {}", id, product.getName(), product.getFinalPrice());
 			return product;
 			
-		} catch (ProductNotFoundException | InvalidProductResponseException | ProductServiceUnavailableException e) {
+		} catch (InvalidProductResponseException | ProductServiceUnavailableException e) {
 			throw e;
 		} catch (RestClientException e) {
 			log.error("Error de conexión al consultar producto {} en ms_products: {}", id, e.getMessage());

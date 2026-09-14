@@ -88,6 +88,7 @@ El servicio utiliza las siguientes variables de entorno (ver `.env.example`):
 - `CORS_ALLOWED_ORIGINS` - Orígenes permitidos para CORS
 - `OAUTH2_ISSUER_URI` - URI del emisor OAuth2 (Microsoft Entra ID)
 - `OAUTH2_AUDIENCE` - Audiencia OAuth2 (ID de cliente de la aplicación)
+- `OAUTH2_AUDIENCE_ID` - ID de cliente de la aplicación (formato raw sin prefijo)
 
 ### Base de Datos
 
