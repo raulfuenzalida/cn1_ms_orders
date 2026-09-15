@@ -80,12 +80,12 @@ Las entidades JPA no se exponen directamente mediante la API. Las solicitudes y 
 
 | Método | Endpoint | Descripción |
 |---|---|---|
-| GET | `/api/v1/orders` | Obtener todos los pedidos |
+| GET | `/api/v1/orders/obtener` | Obtener todos los pedidos |
 | GET | `/api/v1/orders?status={status}` | Filtrar pedidos por estado |
 | GET | `/api/v1/orders?customerName={name}` | Buscar pedidos por nombre de cliente |
 | GET | `/api/v1/orders?customerEmail={email}` | Buscar pedidos por correo del cliente |
 | GET | `/api/v1/orders/{id}` | Obtener detalle de un pedido |
-| POST | `/api/v1/orders` | Crear un pedido |
+| POST | `/api/v1/orders/crear` | Crear un pedido |
 | POST | `/api/v1/orders/{id}/confirm` | Confirmar un pedido |
 | POST | `/api/v1/orders/{id}/complete` | Completar un pedido |
 | POST | `/api/v1/orders/{id}/cancel` | Cancelar un pedido |
