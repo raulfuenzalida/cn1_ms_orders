@@ -29,7 +29,7 @@ public class OrderController {
 	private final OrderService orderService;
 	private final PdfService pdfService;
 
-	@GetMapping
+	@GetMapping("/obtener")
 	@Operation(summary = "Obtener todos los pedidos", description = "Retorna una lista con todos los pedidos registrados")
 	public ResponseEntity<List<OrderSummaryResponse>> getAllOrders() {
 		return ResponseEntity.ok(orderService.getAllOrders());
@@ -59,7 +59,7 @@ public class OrderController {
 		return ResponseEntity.ok(orderService.getOrderById(id));
 	}
 
-	@PostMapping
+	@PostMapping("/crear")
 	@Operation(summary = "Crear nuevo pedido", description = "Crea un nuevo pedido con los datos proporcionados")
 	public ResponseEntity<OrderResponse> createOrder(@Valid @RequestBody OrderCreateRequest request) {
 		OrderResponse response = orderService.createOrder(request);
