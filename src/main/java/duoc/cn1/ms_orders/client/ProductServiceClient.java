@@ -21,7 +21,7 @@ public class ProductServiceClient {
     private String productsBaseUrl;
 
     public ProductDto getProductById(Long id) {
-        String url = productsBaseUrl + "/api/v1/products/" + id;
+        String url = productsBaseUrl + "/api/v1/products/obtener" + id;
 
         log.info(
             "Consultando producto {} en ms_products",
