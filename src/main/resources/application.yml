@@ -29,10 +29,21 @@ spring:
           audiences:
             - ${OAUTH2_AUDIENCE:api://80bf85e9-a444-4754-b780-c65dfff74876}
             - ${OAUTH2_AUDIENCE_ID:80bf85e9-a444-4754-b780-c65dfff74876}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
 
 ms:
   products:
     base-url: ${MS_PRODUCTS_BASE_URL:http://localhost:8081}
+
+rabbitmq:
+  exchange:
+    events: printworks.events
+  routing-key:
+    order-created: order.created
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,https://raulfuenzalida.github.io}

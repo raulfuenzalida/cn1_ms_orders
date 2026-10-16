@@ -1,0 +1,301 @@
+{
+	"info": {
+		"name": "PrintWorks - ms_orders RabbitMQ",
+		"description": "Colección para probar la integración RabbitMQ en ms_orders",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8082",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Orders",
+			"item": [
+				{
+					"name": "Crear pedido",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"customerName\": \"Juan Pérez\",\n  \"customerEmail\": \"juan@email.cl\",\n  \"items\": [\n    {\n      \"idProduct\": 1,\n      \"quantity\": 2\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/orders/crear",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "orders", "crear"]
+						},
+						"description": "Crea un nuevo pedido. El pedido se guardará en la base de datos y publicará el evento order.created en RabbitMQ."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status correcto\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
+									"",
+									"const body = pm.response.json();",
+									"pm.collectionVariables.set(\"orderId\", body.id);",
+									"pm.collectionVariables.set(\"orderNumber\", body.orderNumber);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Crear pedido con múltiples productos",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"customerName\": \"María González\",\n  \"customerEmail\": \"maria@email.cl\",\n  \"items\": [\n    {\n      \"idProduct\": 1,\n      \"quantity\": 1\n    },\n    {\n      \"idProduct\": 2,\n      \"quantity\": 3\n    },\n    {\n      \"idProduct\": 3,\n      \"quantity\": 2\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/orders/crear",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "orders", "crear"]
+						},
+						"description": "Crea un pedido con múltiples productos. Verifica que el evento order.created se publique correctamente con todos los items."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status correcto\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
+									"",
+									"const body = pm.response.json();",
+									"pm.collectionVariables.set(\"orderId\", body.id);",
+									"pm.collectionVariables.set(\"orderNumber\", body.orderNumber);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Crear pedido inválido",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"customerName\": \"\",\n  \"customerEmail\": \"invalid-email\",\n  \"items\": []\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/orders/crear",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "orders", "crear"]
+						},
+						"description": "Intenta crear un pedido inválido. Debe retornar error y NO publicar el evento order.created."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status de error\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([400, 422]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Obtener pedido",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/orders/{{orderId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "orders", "{{orderId}}"]
+						},
+						"description": "Obtiene los detalles de un pedido específico usando el ID guardado en la variable de colección."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status correcto\", function () {",
+									"    pm.expect(pm.response.code).to.eql(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Listar pedidos",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/orders/obtener",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "orders", "obtener"]
+						},
+						"description": "Lista todos los pedidos registrados."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status correcto\", function () {",
+									"    pm.expect(pm.response.code).to.eql(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Descargar comprobante PDF",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/orders/{{orderId}}/receipt",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "orders", "{{orderId}}", "receipt"]
+						},
+						"description": "Descarga el comprobante PDF de un pedido. Este es el mismo PDF que se incluye en el evento order.created."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status correcto\", function () {",
+									"    pm.expect(pm.response.code).to.eql(200);",
+									"});",
+									"",
+									"pm.test(\"Content-Type es PDF\", function () {",
+									"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/pdf\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "RabbitMQ DEV",
+			"item": [
+				{
+					"name": "Publicar order.created de prueba",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"orderId\": 999,\n  \"orderNumber\": \"PW-TEST-999\",\n  \"customerName\": \"Prueba RabbitMQ\",\n  \"customerEmail\": \"test@printworks.cl\",\n  \"total\": 15990,\n  \"status\": \"CREATED\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/orders/test/rabbitmq",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "orders", "test", "rabbitmq"]
+						},
+						"description": "Publica un evento order.created de prueba directamente en RabbitMQ. Este endpoint solo está disponible en perfil 'dev'. Útil para verificar la conexión con RabbitMQ sin necesidad de crear un pedido real. Para observar el mensaje en RabbitMQ Management, crear previamente una cola 'test.order.created' con binding al exchange 'printworks.events' con routing key 'order.created'."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status correcto\", function () {",
+									"    pm.expect(pm.response.code).to.eql(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}
