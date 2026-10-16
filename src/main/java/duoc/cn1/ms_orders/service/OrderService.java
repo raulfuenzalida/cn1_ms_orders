@@ -7,7 +7,9 @@ import duoc.cn1.ms_orders.dto.request.OrderItemRequest;
 import duoc.cn1.ms_orders.dto.response.OrderItemResponse;
 import duoc.cn1.ms_orders.dto.response.OrderResponse;
 import duoc.cn1.ms_orders.dto.response.OrderSummaryResponse;
+import duoc.cn1.ms_orders.event.OrderCreatedEvent;
 import duoc.cn1.ms_orders.exception.*;
+import duoc.cn1.ms_orders.messaging.OrderEventPublisher;
 import duoc.cn1.ms_orders.model.Order;
 import duoc.cn1.ms_orders.model.OrderItem;
 import duoc.cn1.ms_orders.model.OrderStatus;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -33,6 +36,8 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductServiceClient productServiceClient;
+    private final PdfService pdfService;
+    private final OrderEventPublisher orderEventPublisher;
 
     public List<OrderSummaryResponse> getAllOrders() {
         return orderRepository.findAll().stream()
@@ -120,6 +125,22 @@ public class OrderService {
             savedOrder.getCustomerName(),
             savedOrder.getTotal()
         );
+
+        byte[] pdf = pdfService.generateOrderReceipt(savedOrder.getId());
+        String pdfBase64 = Base64.getEncoder().encodeToString(pdf);
+
+        OrderCreatedEvent event = OrderCreatedEvent.builder()
+            .orderId(savedOrder.getId())
+            .orderNumber(savedOrder.getOrderNumber())
+            .customerName(savedOrder.getCustomerName())
+            .customerEmail(savedOrder.getCustomerEmail())
+            .total(savedOrder.getTotal())
+            .status(savedOrder.getStatus().name())
+            .createdAt(savedOrder.getCreatedAt())
+            .pdfBase64(pdfBase64)
+            .build();
+
+        orderEventPublisher.publishOrderCreated(event);
 
         return mapToResponse(savedOrder);
     }
