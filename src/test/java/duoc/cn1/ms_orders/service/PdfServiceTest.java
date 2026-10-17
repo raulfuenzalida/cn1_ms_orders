@@ -75,7 +75,7 @@ class PdfServiceTest {
 	void generateOrderReceipt_NonExistingOrder_ThrowsException() {
 		when(orderRepository.findById(1L)).thenReturn(Optional.empty());
 
-		assertThrows(RuntimeException.class, () -> pdfService.generateOrderReceipt(1L));
+		assertThrows(duoc.cn1.ms_orders.exception.OrderNotFoundException.class, () -> pdfService.generateOrderReceipt(1L));
 	}
 
 	@Test
