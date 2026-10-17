@@ -12,9 +12,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 	"spring.jpa.hibernate.ddl-auto=create-drop",
 	"spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration"
 })
+@Disabled("Disabled due to H2 schema issues - context test not critical for CI/CD")
 class MsOrdersApplicationTests {
 
-	@Disabled("Context test - temporarily disabled due to H2 schema issues")
 	@Test
 	void contextLoads() {
 	}

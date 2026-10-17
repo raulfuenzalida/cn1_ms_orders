@@ -31,7 +31,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@Disabled("Temporarily disabled due to Java 26 + Mockito incompatibility with ProductServiceClient")
+@Disabled("Disabled in CI/CD - has Java version-specific mocking issues with ProductServiceClient")
 class OrderServiceTest {
 
     @Mock
@@ -127,6 +127,27 @@ class OrderServiceTest {
     }
 
     @Test
+    void createOrder_InvalidQuantity_ThrowsException() {
+        validRequest.getItems().get(0).setQuantity(0);
+
+        ProductDto product = new ProductDto();
+        product.setId(1L);
+        product.setName("Producto Test");
+        product.setFinalPrice(new BigDecimal("2500"));
+
+        when(productServiceClient.getProductById(1L))
+            .thenReturn(product);
+
+        assertThrows(
+            InvalidQuantityException.class,
+            () -> orderService.createOrder(validRequest)
+        );
+
+        verify(orderRepository, never()).save(any(Order.class));
+        verify(orderItemRepository, never()).saveAll(anyList());
+    }
+
+    @Test
     void createOrder_EmptyItems_ThrowsException() {
         validRequest.setItems(Collections.emptyList());
 
@@ -174,27 +195,6 @@ class OrderServiceTest {
 
         verifyNoInteractions(productServiceClient);
         verify(orderRepository, never()).save(any(Order.class));
-    }
-
-    @Test
-    void createOrder_InvalidQuantity_ThrowsException() {
-        validRequest.getItems().get(0).setQuantity(0);
-
-        ProductDto product = new ProductDto();
-        product.setId(1L);
-        product.setName("Producto Test");
-        product.setFinalPrice(new BigDecimal("2500"));
-
-        when(productServiceClient.getProductById(1L))
-            .thenReturn(product);
-
-        assertThrows(
-            InvalidQuantityException.class,
-            () -> orderService.createOrder(validRequest)
-        );
-
-        verify(orderRepository, never()).save(any(Order.class));
-        verify(orderItemRepository, never()).saveAll(anyList());
     }
 
     @Test
