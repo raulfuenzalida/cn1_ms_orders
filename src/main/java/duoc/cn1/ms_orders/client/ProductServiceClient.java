@@ -21,7 +21,7 @@ public class ProductServiceClient {
     private String productsBaseUrl;
 
     public ProductDto getProductById(Long id) {
-        String url = productsBaseUrl + "/api/v1/products/obtener/" + id;
+        String url = productsBaseUrl + "/api/v1/products/internal/" + id;
 
         log.info(
             "Consultando producto {} en ms_products",
@@ -93,7 +93,9 @@ public class ProductServiceClient {
             product.getId() == null ||
             product.getName() == null ||
             product.getName().isBlank() ||
-            product.getFinalPrice() == null
+            product.getFinalPrice() == null ||
+            product.getIdFilament() == null ||
+            product.getFilamentGrams() == null
         ) {
             throw new InvalidProductResponseException(
                 "Respuesta del servicio de productos con datos incompletos para ID: "

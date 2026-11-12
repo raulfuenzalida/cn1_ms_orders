@@ -14,4 +14,6 @@ public class ProductDto {
     private Long id;
     private String name;
     private BigDecimal finalPrice;
+    private Long idFilament;
+    private BigDecimal filamentGrams;
 }

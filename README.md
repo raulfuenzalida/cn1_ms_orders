@@ -141,10 +141,10 @@ Esto permite que un pedido mantenga sus valores originales aunque posteriormente
 
 `ms_orders` depende de `ms_products` para obtener la información necesaria al crear un pedido.
 
-La comunicación se realiza mediante:
+La comunicación se realiza mediante el endpoint interno de productos:
 
 ```text
-GET /api/v1/products/{id}
+GET /api/v1/products/internal/{id}
 ```
 
 `ms_orders` utiliza la respuesta para obtener:
@@ -152,8 +152,12 @@ GET /api/v1/products/{id}
 - ID del producto
 - Nombre del producto
 - Precio final vigente
+- `idFilament` y `filamentGrams` (datos de consumo de filamento,
+  persistidos como snapshot en `order_items`)
 
-El endpoint público de productos expone únicamente productos disponibles para catálogo, por lo que un producto inactivo o con precio desactualizado no puede utilizarse para crear un nuevo pedido.
+El endpoint interno devuelve únicamente productos disponibles para pedido
+(`ACTIVE` + `CURRENT`), por lo que un producto inactivo o con precio
+desactualizado no puede utilizarse para crear un nuevo pedido.
 
 `ms_orders` no:
 
