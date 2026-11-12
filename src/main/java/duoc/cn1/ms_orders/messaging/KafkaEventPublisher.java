@@ -5,30 +5,28 @@ import duoc.cn1.ms_orders.event.FilamentConsumptionEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.services.kinesis.KinesisClient;
-import software.amazon.awssdk.services.kinesis.model.PutRecordRequest;
-
-import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class KinesisEventPublisher {
+public class KafkaEventPublisher {
 
-	private final KinesisClient kinesisClient;
+	private final KafkaTemplate<String, String> kafkaTemplate;
 	private final ObjectMapper objectMapper;
 
-	@Value("${kinesis.stream.filament-consumption}")
-	private String filamentConsumptionStream;
+	@Value("${kafka.topic.filament-consumption}")
+	private String filamentConsumptionTopic;
 
 	/**
-	 * Publica el evento de consumo de filamento en Kinesis.
+	 * Publica el evento de consumo de filamento en Kafka.
 	 * Si hay una transacción activa, espera al commit para no publicar
 	 * un evento de una orden que aún no está persistida.
+	 * La clave es el orderId para mantener el orden de eventos de una
+	 * misma orden dentro de una partición.
 	 */
 	public void publishAfterCommit(FilamentConsumptionEvent event) {
 		if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -49,23 +47,25 @@ public class KinesisEventPublisher {
 		try {
 			String json = objectMapper.writeValueAsString(event);
 
-			PutRecordRequest request = PutRecordRequest.builder()
-				.streamName(filamentConsumptionStream)
-				.partitionKey(String.valueOf(event.getOrderId()))
-				.data(SdkBytes.fromString(json, StandardCharsets.UTF_8))
-				.build();
-
-			kinesisClient.putRecord(request);
-
-			log.info("Evento FILAMENT_CONSUMPTION publicado en Kinesis: "
-				+ "orderId={}, orderNumber={}, filamentos={}",
-				event.getOrderId(), event.getOrderNumber(),
-				event.getFilaments().size());
+			kafkaTemplate.send(
+				filamentConsumptionTopic,
+				String.valueOf(event.getOrderId()),
+				json
+			).whenComplete((result, ex) -> {
+				if (ex != null) {
+					log.error("Error al publicar FILAMENT_CONSUMPTION en Kafka "
+						+ "para orderId={}: {}", event.getOrderId(), ex.getMessage(), ex);
+				} else {
+					log.info("Evento FILAMENT_CONSUMPTION publicado en Kafka: "
+						+ "orderId={}, orderNumber={}, particion={}, offset={}",
+						event.getOrderId(), event.getOrderNumber(),
+						result.getRecordMetadata().partition(),
+						result.getRecordMetadata().offset());
+				}
+			});
 		} catch (Exception e) {
-			log.error("Error al publicar FILAMENT_CONSUMPTION en Kinesis "
+			log.error("Error al publicar FILAMENT_CONSUMPTION en Kafka "
 				+ "para orderId={}: {}", event.getOrderId(), e.getMessage(), e);
-			throw new RuntimeException(
-				"Error publicando evento de consumo de filamento en Kinesis", e);
 		}
 	}
 }
