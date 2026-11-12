@@ -7,8 +7,10 @@ import duoc.cn1.ms_orders.dto.request.OrderItemRequest;
 import duoc.cn1.ms_orders.dto.response.OrderItemResponse;
 import duoc.cn1.ms_orders.dto.response.OrderResponse;
 import duoc.cn1.ms_orders.dto.response.OrderSummaryResponse;
+import duoc.cn1.ms_orders.event.FilamentConsumptionEvent;
 import duoc.cn1.ms_orders.event.OrderCreatedEvent;
 import duoc.cn1.ms_orders.exception.*;
+import duoc.cn1.ms_orders.messaging.KinesisEventPublisher;
 import duoc.cn1.ms_orders.messaging.OrderEventPublisher;
 import duoc.cn1.ms_orders.model.Order;
 import duoc.cn1.ms_orders.model.OrderItem;
@@ -24,6 +26,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -38,6 +41,7 @@ public class OrderService {
     private final ProductServiceClient productServiceClient;
     private final PdfService pdfService;
     private final OrderEventPublisher orderEventPublisher;
+    private final KinesisEventPublisher kinesisEventPublisher;
 
     public List<OrderSummaryResponse> getAllOrders() {
         return orderRepository.findAll().stream()
@@ -161,9 +165,47 @@ public class OrderService {
 
         Order updatedOrder = orderRepository.save(order);
 
+        publishFilamentConsumption(updatedOrder);
+
         log.info("Pedido confirmado: ID {}", id);
 
         return mapToResponse(updatedOrder);
+    }
+
+    private void publishFilamentConsumption(Order order) {
+        Map<Long, BigDecimal> gramsByFilament = order.getItems().stream()
+            .collect(Collectors.groupingBy(
+                OrderItem::getIdFilament,
+                Collectors.reducing(
+                    BigDecimal.ZERO,
+                    item -> item.getFilamentGrams()
+                        .multiply(BigDecimal.valueOf(item.getQuantity())),
+                    BigDecimal::add
+                )
+            ));
+
+        if (gramsByFilament.isEmpty()) {
+            return;
+        }
+
+        List<FilamentConsumptionEvent.FilamentConsumption> filaments =
+            gramsByFilament.entrySet().stream()
+                .map(entry -> FilamentConsumptionEvent.FilamentConsumption
+                    .builder()
+                    .filamentId(entry.getKey())
+                    .grams(entry.getValue())
+                    .build())
+                .collect(Collectors.toList());
+
+        FilamentConsumptionEvent event = FilamentConsumptionEvent.builder()
+            .eventType(FilamentConsumptionEvent.EVENT_TYPE)
+            .orderId(order.getId())
+            .orderNumber(order.getOrderNumber())
+            .filaments(filaments)
+            .timestamp(LocalDateTime.now())
+            .build();
+
+        kinesisEventPublisher.publishAfterCommit(event);
     }
 
     public OrderResponse completeOrder(Long id) {

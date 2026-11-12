@@ -39,6 +39,13 @@ ms:
   products:
     base-url: ${MS_PRODUCTS_BASE_URL:http://localhost:8081}
 
+aws:
+  region: ${AWS_REGION:us-east-1}
+
+kinesis:
+  stream:
+    filament-consumption: ${KINESIS_STREAM_FILAMENT_CONSUMPTION:printworks.filament-consumption}
+
 rabbitmq:
   exchange:
     events: printworks.events
