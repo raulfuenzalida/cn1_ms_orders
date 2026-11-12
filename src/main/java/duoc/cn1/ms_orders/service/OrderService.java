@@ -91,6 +91,8 @@ public class OrderService {
                 return new OrderItem(
                     null,
                     itemRequest.getIdProduct(),
+                    product.getIdFilament(),
+                    product.getFilamentGrams(),
                     product.getName(),
                     unitPrice,
                     itemRequest.getQuantity(),
@@ -289,6 +291,8 @@ public class OrderService {
         return new OrderItemResponse(
             item.getId(),
             item.getIdProduct(),
+            item.getIdFilament(),
+            item.getFilamentGrams(),
             item.getProductName(),
             item.getUnitPrice(),
             item.getQuantity(),

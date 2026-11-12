@@ -130,12 +130,29 @@ El precio del pedido **no es enviado ni calculado por el frontend**. El backend 
 Cada `order_item` conserva información histórica del producto utilizado al momento de crear el pedido:
 
 - ID del producto
+- `idFilament` y `filamentGrams` (snapshot del consumo de filamento,
+  usado posteriormente por el streaming de inventario)
 - Nombre del producto
 - Precio unitario
 - Cantidad
 - Subtotal
 
 Esto permite que un pedido mantenga sus valores originales aunque posteriormente cambien el nombre, configuración o precio del producto en `ms_products`.
+
+Las columnas `id_filament` y `filament_grams` fueron agregadas a
+`order_items`. Para bases de datos ya existentes (incluido el ambiente
+AWS) es necesario ejecutar manualmente:
+
+```sql
+ALTER TABLE order_items
+    ADD COLUMN id_filament BIGINT NOT NULL,
+    ADD COLUMN filament_grams DECIMAL(10,2) NOT NULL,
+    ADD CONSTRAINT chk_filament_grams_positive CHECK (filament_grams > 0);
+```
+
+Nota: los pedidos históricos sin estos datos requerirán un valor por
+defecto o backfill antes de aplicar el `ALTER` (las columnas son
+`NOT NULL`).
 
 ## Integración con ms_products
 
