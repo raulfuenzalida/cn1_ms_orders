@@ -16,6 +16,7 @@ Es responsable de la creación, consulta y gestión del ciclo de vida de los ped
 - Lombok
 - Jakarta Validation
 - SpringDoc OpenAPI (Swagger)
+- AWS SDK v2 para Amazon Kinesis Data Streams
 - iText 8 para generación de PDF
 - JUnit 5
 - Mockito
@@ -184,6 +185,51 @@ desactualizado no puede utilizarse para crear un nuevo pedido.
 
 De esta manera se mantiene el principio **Database per Service**.
 
+## Streaming: Consumo de Filamento (AWS Kinesis)
+
+Cuando un pedido pasa de `CREATED` a `CONFIRMED`, `ms_orders` publica un
+evento `FILAMENT_CONSUMPTION` en el stream de Kinesis
+`printworks.filament-consumption`. `ms_config` consume ese stream y
+descuenta el stock de filamento correspondiente.
+
+Flujo:
+
+```text
+confirmOrder()
+    ↓ status = CONFIRMED
+    ↓ agrupa items por idFilament
+    ↓ grams = filamentGrams × quantity (sumado por filamento)
+    ↓ KinesisEventPublisher.publishAfterCommit()
+    ↓ PutRecord (partitionKey = orderId)
+printworks.filament-consumption
+    ↓
+ms_config → descuenta stock_grams (idempotente vía processed_events)
+```
+
+Detalles de implementación:
+
+- `event/FilamentConsumptionEvent.java`: DTO del evento
+  (`eventType`, `orderId`, `orderNumber`, `filaments[{filamentId, grams}]`,
+  `timestamp`).
+- `messaging/KinesisEventPublisher.java`: serializa a JSON y publica con
+  `PutRecord`. Si hay transacción activa registra un
+  `TransactionSynchronization.afterCommit`, por lo que el evento solo se
+  publica si el cambio de estado se confirma en `orders_db`.
+- `config/KinesisConfig.java`: bean `KinesisClient` con la región de
+  `aws.region` / `AWS_REGION`. En AWS las credenciales las provee el IAM
+  task role; en local se usan las credenciales del perfil/entorno AWS.
+- La publicación es **fire-and-forget**: si Kinesis falla, el pedido ya
+  quedó confirmado y el error queda en log. El evento no se reintenta
+  desde `ms_orders` (limitación aceptada para el MVP; la idempotencia del
+  consumidor protege contra reentregas, no contra eventos perdidos).
+
+### Variables de Entorno (Kinesis)
+
+| Variable | Descripción | Default |
+|---|---|---|
+| `AWS_REGION` | Región AWS de Kinesis | `us-east-1` |
+| `KINESIS_STREAM_FILAMENT_CONSUMPTION` | Nombre del stream principal | `printworks.filament-consumption` |
+
 ## Estados de Pedidos
 
 Los pedidos pueden tener los siguientes estados:
@@ -310,6 +356,8 @@ El servicio utiliza las siguientes variables, documentadas en `.env.example`:
 | `DB_USER` | Usuario de `orders_db` |
 | `DB_PASSWORD` | Contraseña de la base de datos |
 | `MS_PRODUCTS_BASE_URL` | URL base de `ms_products` |
+| `AWS_REGION` | Región AWS para Kinesis. Default `us-east-1` |
+| `KINESIS_STREAM_FILAMENT_CONSUMPTION` | Stream Kinesis de consumo de filamento |
 | `CORS_ALLOWED_ORIGINS` | Orígenes permitidos por CORS |
 | `OAUTH2_ISSUER_URI` | Issuer URI de Microsoft Entra ID |
 | `OAUTH2_AUDIENCE` | Audience OAuth2 en formato `api://...` |
@@ -568,7 +616,9 @@ cn1_ms_orders/
 │   │   │   │   ├── ProductServiceClient.java
 │   │   │   │   └── ProductDto.java
 │   │   │   ├── config/
+│   │   │   │   ├── KinesisConfig.java
 │   │   │   │   ├── OpenApiConfig.java
+│   │   │   │   ├── RabbitConfig.java
 │   │   │   │   └── RestTemplateConfig.java
 │   │   │   ├── controller/
 │   │   │   │   └── OrderController.java
@@ -581,6 +631,12 @@ cn1_ms_orders/
 │   │   │   │       ├── OrderResponse.java
 │   │   │   │       └── OrderSummaryResponse.java
 │   │   │   ├── exception/
+│   │   │   ├── event/
+│   │   │   │   ├── FilamentConsumptionEvent.java
+│   │   │   │   └── OrderCreatedEvent.java
+│   │   │   ├── messaging/
+│   │   │   │   ├── KinesisEventPublisher.java
+│   │   │   │   └── OrderEventPublisher.java
 │   │   │   ├── model/
 │   │   │   │   ├── Order.java
 │   │   │   │   ├── OrderItem.java
