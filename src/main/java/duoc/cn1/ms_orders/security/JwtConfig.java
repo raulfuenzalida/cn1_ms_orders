@@ -1,20 +1,12 @@
 package duoc.cn1.ms_orders.security;
 
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.convert.converter.Converter;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 /**
  * Soporta dos proveedores de identidad:
@@ -57,27 +49,6 @@ public class JwtConfig {
 					throw entraException;
 				}
 			}
-		};
-	}
-
-	/**
-	 * Asigna ROLE_ADMIN a tokens de Entra ID y ROLE_CLIENT a tokens de
-	 * Cognito, según el issuer validado por el decoder.
-	 */
-	@Bean
-	@Qualifier("jwtAuthenticationConverter")
-	public Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter(
-			@Value("${app.security.jwt.cognito-issuer-uri}") String cognitoIssuerUri) {
-		return jwt -> {
-			boolean isCognito = jwt.getIssuer() != null
-				&& jwt.getIssuer().toString().equals(cognitoIssuerUri);
-
-			String authority = isCognito ? "ROLE_CLIENT" : "ROLE_ADMIN";
-
-			return new JwtAuthenticationToken(
-				jwt,
-				List.of(new SimpleGrantedAuthority(authority))
-			);
 		};
 	}
 }
