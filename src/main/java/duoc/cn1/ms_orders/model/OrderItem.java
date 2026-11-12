@@ -23,6 +23,12 @@ public class OrderItem {
 	@Column(name = "id_product", nullable = false)
 	private Long idProduct;
 
+	@Column(name = "id_filament", nullable = false)
+	private Long idFilament;
+
+	@Column(name = "filament_grams", nullable = false, precision = 10, scale = 2)
+	private BigDecimal filamentGrams;
+
 	@Column(name = "product_name", nullable = false)
 	private String productName;
 
@@ -38,9 +44,11 @@ public class OrderItem {
 	public OrderItem() {
 	}
 
-	public OrderItem(Order order, Long idProduct, String productName, BigDecimal unitPrice, Integer quantity, BigDecimal subtotal) {
+	public OrderItem(Order order, Long idProduct, Long idFilament, BigDecimal filamentGrams, String productName, BigDecimal unitPrice, Integer quantity, BigDecimal subtotal) {
 		this.order = order;
 		this.idProduct = idProduct;
+		this.idFilament = idFilament;
+		this.filamentGrams = filamentGrams;
 		this.productName = productName;
 		this.unitPrice = unitPrice;
 		this.quantity = quantity;
@@ -69,6 +77,22 @@ public class OrderItem {
 
 	public void setIdProduct(Long idProduct) {
 		this.idProduct = idProduct;
+	}
+
+	public Long getIdFilament() {
+		return idFilament;
+	}
+
+	public void setIdFilament(Long idFilament) {
+		this.idFilament = idFilament;
+	}
+
+	public BigDecimal getFilamentGrams() {
+		return filamentGrams;
+	}
+
+	public void setFilamentGrams(BigDecimal filamentGrams) {
+		this.filamentGrams = filamentGrams;
 	}
 
 	public String getProductName() {

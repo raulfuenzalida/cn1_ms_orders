@@ -13,6 +13,8 @@ public class OrderItemResponse {
 
 	private Long id;
 	private Long idProduct;
+	private Long idFilament;
+	private BigDecimal filamentGrams;
 	private String productName;
 	private BigDecimal unitPrice;
 	private Integer quantity;

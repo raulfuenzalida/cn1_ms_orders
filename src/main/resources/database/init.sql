@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS order_items (
     id_order_item BIGINT AUTO_INCREMENT PRIMARY KEY,
     id_order BIGINT NOT NULL,
     id_product BIGINT NOT NULL,
+    id_filament BIGINT NOT NULL,
+    filament_grams DECIMAL(10, 2) NOT NULL,
     product_name VARCHAR(255) NOT NULL,
     unit_price DECIMAL(10, 2) NOT NULL,
     quantity INT NOT NULL,
@@ -27,6 +29,7 @@ CREATE TABLE IF NOT EXISTS order_items (
     UNIQUE KEY unique_order_product (id_order, id_product),
     CONSTRAINT fk_order FOREIGN KEY (id_order) REFERENCES orders(id_order) ON DELETE CASCADE,
     CONSTRAINT chk_quantity_range CHECK (quantity BETWEEN 1 AND 99),
+    CONSTRAINT chk_filament_grams_positive CHECK (filament_grams > 0),
     CONSTRAINT chk_unit_price_positive CHECK (unit_price > 0),
     CONSTRAINT chk_subtotal_positive CHECK (subtotal >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
