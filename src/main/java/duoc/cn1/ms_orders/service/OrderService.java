@@ -10,7 +10,7 @@ import duoc.cn1.ms_orders.dto.response.OrderSummaryResponse;
 import duoc.cn1.ms_orders.event.FilamentConsumptionEvent;
 import duoc.cn1.ms_orders.event.OrderCreatedEvent;
 import duoc.cn1.ms_orders.exception.*;
-import duoc.cn1.ms_orders.messaging.KinesisEventPublisher;
+import duoc.cn1.ms_orders.messaging.KafkaEventPublisher;
 import duoc.cn1.ms_orders.messaging.OrderEventPublisher;
 import duoc.cn1.ms_orders.model.Order;
 import duoc.cn1.ms_orders.model.OrderItem;
@@ -41,7 +41,7 @@ public class OrderService {
     private final ProductServiceClient productServiceClient;
     private final PdfService pdfService;
     private final OrderEventPublisher orderEventPublisher;
-    private final KinesisEventPublisher kinesisEventPublisher;
+    private final KafkaEventPublisher kafkaEventPublisher;
 
     public List<OrderSummaryResponse> getAllOrders() {
         return orderRepository.findAll().stream()
@@ -205,7 +205,7 @@ public class OrderService {
             .timestamp(LocalDateTime.now())
             .build();
 
-        kinesisEventPublisher.publishAfterCommit(event);
+        kafkaEventPublisher.publishAfterCommit(event);
     }
 
     public OrderResponse completeOrder(Long id) {

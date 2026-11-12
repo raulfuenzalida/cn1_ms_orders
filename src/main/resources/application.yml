@@ -34,6 +34,11 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:guest}
     password: ${RABBITMQ_PASSWORD:guest}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      retries: 3
 
 ms:
   products:
@@ -52,9 +57,9 @@ app:
       cognito-issuer-uri: ${COGNITO_ISSUER_URI:https://cognito-idp.${AWS_REGION:us-east-1}.amazonaws.com/${COGNITO_USER_POOL_ID:us-east-1_KtdUxURf6}}
       cognito-jwk-set-uri: ${COGNITO_JWK_SET_URI:https://cognito-idp.${AWS_REGION:us-east-1}.amazonaws.com/${COGNITO_USER_POOL_ID:us-east-1_KtdUxURf6}/.well-known/jwks.json}
 
-kinesis:
-  stream:
-    filament-consumption: ${KINESIS_STREAM_FILAMENT_CONSUMPTION:printworks.filament-consumption}
+kafka:
+  topic:
+    filament-consumption: ${KAFKA_TOPIC_FILAMENT_CONSUMPTION:printworks.filament-consumption}
 
 rabbitmq:
   exchange:
