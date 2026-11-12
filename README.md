@@ -362,6 +362,11 @@ El servicio utiliza las siguientes variables, documentadas en `.env.example`:
 | `OAUTH2_ISSUER_URI` | Issuer URI de Microsoft Entra ID |
 | `OAUTH2_AUDIENCE` | Audience OAuth2 en formato `api://...` |
 | `OAUTH2_AUDIENCE_ID` | ID de la aplicación sin prefijo |
+| `AWS_REGION` | Región AWS (Kinesis + Cognito). Default `us-east-1` |
+| `KINESIS_STREAM_FILAMENT_CONSUMPTION` | Stream Kinesis de consumo de filamento |
+| `COGNITO_USER_POOL_ID` | User Pool ID de Cognito para tokens de clientes |
+| `COGNITO_ISSUER_URI` | (Opcional) Sobrescribe el issuer de Cognito |
+| `COGNITO_JWK_SET_URI` | (Opcional) Sobrescribe el JWKS de Cognito |
 
 Ejemplo para desarrollo local:
 
@@ -380,6 +385,10 @@ CORS_ALLOWED_ORIGINS=http://localhost:5173,https://raulfuenzalida.github.io
 OAUTH2_ISSUER_URI=https://login.microsoftonline.com/YOUR_TENANT_ID/v2.0
 OAUTH2_AUDIENCE=api://YOUR_CLIENT_ID
 OAUTH2_AUDIENCE_ID=YOUR_CLIENT_ID
+
+AWS_REGION=us-east-1
+KINESIS_STREAM_FILAMENT_CONSUMPTION=printworks.filament-consumption
+COGNITO_USER_POOL_ID=us-east-1_KtdUxURf6
 ```
 
 ## Base de Datos
@@ -426,7 +435,30 @@ Almacena los ítems y snapshots históricos asociados a cada pedido:
 
 ## Seguridad
 
-El servicio utiliza **Spring Security OAuth2 Resource Server** para validar JWT emitidos por Microsoft Entra ID.
+El servicio utiliza **Spring Security OAuth2 Resource Server** y acepta JWT
+de **dos proveedores de identidad**:
+
+| Proveedor | Frontend | Rol asignado | Alcance |
+|---|---|---|---|
+| Microsoft Entra ID | `front_admin` | `ROLE_ADMIN` | Todos los endpoints de pedidos |
+| AWS Cognito User Pool | `front_public` (clientes) | `ROLE_CLIENT` | Solo crear pedidos y descargar comprobante |
+
+`JwtConfig` implementa un `JwtDecoder` compuesto que intenta validar el
+token contra Entra ID y, si falla, contra Cognito (JWKS de cada issuer).
+Un `JwtAuthenticationConverter` asigna `ROLE_ADMIN` u `ROLE_CLIENT`
+según el claim `iss` del token validado.
+
+### Matriz de autorización
+
+| Endpoint | Roles permitidos |
+|---|---|
+| `POST /api/v1/orders/crear` | `CLIENT`, `ADMIN` |
+| `GET /api/v1/orders/{id}/receipt` | `CLIENT`, `ADMIN` |
+| Resto de `/api/v1/orders/**` | Solo `ADMIN` |
+
+Los clientes (`ROLE_CLIENT`) solo pueden crear pedidos y descargar el
+comprobante de un pedido. La gestión de pedidos (listado, detalle,
+confirmación, completado, cancelación) es exclusiva del administrador.
 
 Las solicitudes protegidas utilizan:
 
@@ -434,7 +466,8 @@ Las solicitudes protegidas utilizan:
 Authorization: Bearer <access_token>
 ```
 
-El sistema utiliza **Access Token** para consumir la API. El ID Token no sustituye al Access Token.
+Se utiliza **Access Token** en ambos casos. El ID Token de Cognito también
+es válido criptográficamente pero se prefiere el Access Token.
 
 Swagger permite autorizar las solicitudes protegidas utilizando un Bearer Token para realizar pruebas sobre los endpoints.
 
@@ -645,6 +678,7 @@ cn1_ms_orders/
 │   │   │   │   ├── OrderItemRepository.java
 │   │   │   │   └── OrderRepository.java
 │   │   │   ├── security/
+│   │   │   │   ├── JwtConfig.java
 │   │   │   │   └── SecurityConfig.java
 │   │   │   └── service/
 │   │   │       ├── OrderService.java

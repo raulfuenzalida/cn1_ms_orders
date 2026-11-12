@@ -42,6 +42,16 @@ ms:
 aws:
   region: ${AWS_REGION:us-east-1}
 
+app:
+  security:
+    jwt:
+      # Entra ID (front_admin) - valida tokens del admin
+      entra-issuer-uri: ${OAUTH2_ISSUER_URI:https://login.microsoftonline.com/14c46308-ab91-4693-b0c0-daddd7a8aab5/v2.0}
+      entra-jwk-set-uri: ${OAUTH2_JWK_SET_URI:https://login.microsoftonline.com/14c46308-ab91-4693-b0c0-daddd7a8aab5/discovery/v2.0/keys}
+      # AWS Cognito (front_public clientes) - valida tokens de clientes
+      cognito-issuer-uri: ${COGNITO_ISSUER_URI:https://cognito-idp.${AWS_REGION:us-east-1}.amazonaws.com/${COGNITO_USER_POOL_ID:us-east-1_KtdUxURf6}}
+      cognito-jwk-set-uri: ${COGNITO_JWK_SET_URI:https://cognito-idp.${AWS_REGION:us-east-1}.amazonaws.com/${COGNITO_USER_POOL_ID:us-east-1_KtdUxURf6}/.well-known/jwks.json}
+
 kinesis:
   stream:
     filament-consumption: ${KINESIS_STREAM_FILAMENT_CONSUMPTION:printworks.filament-consumption}
